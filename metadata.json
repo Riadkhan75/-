@@ -1,0 +1,6 @@
+{
+  "name": "মানবতার সেবা (Manobotar Sheba)",
+  "description": "মানবতার সেবা – একসঙ্গে মানুষের পাশে। রক্তদান, জরুরি মানবিক সাহায্য, স্বেচ্ছাসেবা এবং অনুদান ক্যাম্পেইন প্ল্যাটফর্ম।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

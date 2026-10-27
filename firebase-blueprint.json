@@ -1,0 +1,572 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "maxLength": 100, "description": "Full name in Bangla or English" },
+        "email": { "type": "string", "maxLength": 120, "description": "User email address" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Contact phone number" },
+        "district": { "type": "string", "maxLength": 60, "description": "District in Bangladesh" },
+        "upazila": { "type": "string", "maxLength": 60, "description": "Upazila in Bangladesh" },
+        "role": { "type": "string", "enum": ["user", "volunteer", "admin", "superadmin"], "description": "User role" },
+        "isVerified": { "type": "boolean", "description": "Whether user profile has official verification badge" },
+        "verificationStatus": { "type": "string", "enum": ["unverified", "pending", "verified", "rejected"], "description": "Verification lifecycle" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp" }
+      },
+      "required": ["uid", "email", "displayName"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Authorized administrator record for role validation",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Admin UID" },
+        "email": { "type": "string", "description": "Admin Email" },
+        "role": { "type": "string", "enum": ["superadmin", "admin"], "description": "Role level" },
+        "grantedBy": { "type": "string", "description": "UID of granting admin" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "HelpRequest": {
+      "title": "HelpRequest",
+      "description": "Humanitarian assistance request submitted by citizens",
+      "type": "object",
+      "properties": {
+        "referenceNo": { "type": "string", "maxLength": 30, "description": "Unique reference ID (e.g. MS-2026-1001)" },
+        "ownerId": { "type": "string", "description": "User ID of applicant" },
+        "applicantName": { "type": "string", "maxLength": 100, "description": "Name of applicant or patient" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Contact phone" },
+        "category": { "type": "string", "enum": ["medical", "education", "food", "clothing", "emergency", "other"], "description": "Category of request" },
+        "title": { "type": "string", "maxLength": 200, "description": "Short title of the request" },
+        "description": { "type": "string", "maxLength": 2000, "description": "Detailed description of the requirement" },
+        "amountNeeded": { "type": "number", "description": "Estimated financial or item assistance needed" },
+        "district": { "type": "string", "maxLength": 60, "description": "District" },
+        "upazila": { "type": "string", "maxLength": 60, "description": "Upazila" },
+        "address": { "type": "string", "maxLength": 250, "description": "Detailed village/road/union address" },
+        "isPublic": { "type": "boolean", "description": "Whether approved to display in public verified list without PII" },
+        "consentGiven": { "type": "boolean", "description": "User consent to process data for humanitarian verification" },
+        "status": { "type": "string", "enum": ["pending", "under_review", "approved", "in_progress", "completed", "rejected"], "description": "Processing status" },
+        "adminNotes": { "type": "string", "maxLength": 1000, "description": "Internal verification remarks" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["referenceNo", "ownerId", "applicantName", "category", "title", "description", "district", "status"]
+    },
+    "BloodDonor": {
+      "title": "BloodDonor",
+      "description": "Voluntary blood donor directory entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "User ID" },
+        "donorName": { "type": "string", "maxLength": 100, "description": "Donor name" },
+        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], "description": "Blood group" },
+        "district": { "type": "string", "maxLength": 60, "description": "District" },
+        "upazila": { "type": "string", "maxLength": 60, "description": "Upazila" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Contact number (protected)" },
+        "isAvailable": { "type": "boolean", "description": "Available for donation" },
+        "lastDonationDate": { "type": "string", "maxLength": 30, "description": "Date of last blood donation" },
+        "totalDonations": { "type": "number", "description": "Count of donations" },
+        "consent": { "type": "boolean", "description": "Consent for blood emergency contact" },
+        "createdAt": { "type": "string", "description": "Timestamp" },
+        "updatedAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["userId", "donorName", "bloodGroup", "district", "isAvailable", "consent"]
+    },
+    "BloodRequest": {
+      "title": "BloodRequest",
+      "description": "Urgent blood requirement notice",
+      "type": "object",
+      "properties": {
+        "requesterId": { "type": "string", "description": "User ID of requester" },
+        "patientName": { "type": "string", "maxLength": 100, "description": "Patient identifier" },
+        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], "description": "Needed blood group" },
+        "bagsNeeded": { "type": "number", "description": "Number of bags required" },
+        "hospital": { "type": "string", "maxLength": 150, "description": "Hospital name" },
+        "district": { "type": "string", "maxLength": 60, "description": "District" },
+        "upazila": { "type": "string", "maxLength": 60, "description": "Upazila" },
+        "urgency": { "type": "string", "enum": ["critical", "emergency", "standard"], "description": "Urgency level" },
+        "neededDate": { "type": "string", "maxLength": 40, "description": "Required date and time" },
+        "contactName": { "type": "string", "maxLength": 100, "description": "Contact person name" },
+        "contactPhone": { "type": "string", "maxLength": 20, "description": "Contact phone" },
+        "reason": { "type": "string", "maxLength": 500, "description": "Reason" },
+        "status": { "type": "string", "enum": ["active", "fulfilled", "cancelled"], "description": "Status" },
+        "createdAt": { "type": "string", "description": "Timestamp" },
+        "updatedAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["requesterId", "bloodGroup", "bagsNeeded", "hospital", "district", "urgency", "neededDate", "contactPhone", "status"]
+    },
+    "VolunteerApplication": {
+      "title": "VolunteerApplication",
+      "description": "Volunteer membership enrollment",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "User ID" },
+        "name": { "type": "string", "maxLength": 100, "description": "Full name" },
+        "email": { "type": "string", "maxLength": 120, "description": "Email" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Phone number" },
+        "occupation": { "type": "string", "maxLength": 100, "description": "Profession/Occupation" },
+        "skills": { "type": "string", "maxLength": 300, "description": "Skills and interests" },
+        "district": { "type": "string", "maxLength": 60, "description": "District" },
+        "upazila": { "type": "string", "maxLength": 60, "description": "Upazila" },
+        "preferredTeam": { "type": "string", "maxLength": 100, "description": "Preferred field of service" },
+        "hoursPerWeek": { "type": "number", "description": "Available hours per week" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "Application approval status" },
+        "assignedTeamId": { "type": "string", "maxLength": 100, "description": "Assigned team" },
+        "points": { "type": "number", "description": "Reward points earned" },
+        "volunteerIdCard": { "type": "string", "maxLength": 40, "description": "Unique volunteer ID card number" },
+        "optOutLeaderboard": { "type": "boolean", "description": "Opt out from public leaderboard" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["userId", "name", "phone", "district", "skills", "status"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "Humanitarian relief and welfare fund campaign",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200, "description": "Campaign title" },
+        "subtitle": { "type": "string", "maxLength": 300, "description": "Subtitle" },
+        "description": { "type": "string", "maxLength": 4000, "description": "Full details" },
+        "category": { "type": "string", "enum": ["flood_relief", "winter_clothes", "medical_fund", "education_scholarship", "iftar_food", "general_welfare"], "description": "Campaign category" },
+        "targetAmount": { "type": "number", "description": "Fundraising target in BDT" },
+        "collectedAmount": { "type": "number", "description": "Verified collected amount in BDT" },
+        "donorCount": { "type": "number", "description": "Count of verified donors" },
+        "startDate": { "type": "string", "maxLength": 40, "description": "Campaign launch date" },
+        "endDate": { "type": "string", "maxLength": 40, "description": "Campaign deadline" },
+        "status": { "type": "string", "enum": ["active", "completed", "paused", "draft"], "description": "Campaign status" },
+        "featured": { "type": "boolean", "description": "Feature on homepage" },
+        "bannerUrl": { "type": "string", "maxLength": 500, "description": "Banner image URL" },
+        "createdBy": { "type": "string", "description": "Admin UID" },
+        "createdAt": { "type": "string", "description": "Timestamp" },
+        "updatedAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["title", "category", "targetAmount", "collectedAmount", "status"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Donation contribution pledge and manual transaction submission",
+      "type": "object",
+      "properties": {
+        "campaignId": { "type": "string", "description": "Target campaign ID or 'general'" },
+        "campaignTitle": { "type": "string", "maxLength": 200, "description": "Campaign Title for receipt" },
+        "donorId": { "type": "string", "description": "Donor UID if registered, or 'guest'" },
+        "donorName": { "type": "string", "maxLength": 100, "description": "Donor name or 'Anonymous'" },
+        "donorEmail": { "type": "string", "maxLength": 120, "description": "Email address" },
+        "donorPhone": { "type": "string", "maxLength": 20, "description": "Contact number" },
+        "amount": { "type": "number", "description": "Donation amount in BDT" },
+        "paymentMethod": { "type": "string", "enum": ["bkash", "nagad", "rocket", "bank", "cash"], "description": "Payment channel" },
+        "transactionId": { "type": "string", "maxLength": 60, "description": "TrxID or bank reference provided by donor" },
+        "senderAccount": { "type": "string", "maxLength": 40, "description": "Last digits or sender number for verification" },
+        "status": { "type": "string", "enum": ["pending_verification", "verified", "rejected"], "description": "Verification status" },
+        "verifiedBy": { "type": "string", "description": "Admin UID who verified bank/MFS record" },
+        "verifiedAt": { "type": "string", "description": "Verification timestamp" },
+        "rejectionReason": { "type": "string", "maxLength": 250, "description": "Reason if rejected" },
+        "receiptNo": { "type": "string", "maxLength": 40, "description": "Official receipt number" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["campaignId", "amount", "paymentMethod", "transactionId", "status"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Audited expenditure entry for financial transparency",
+      "type": "object",
+      "properties": {
+        "campaignId": { "type": "string", "description": "Associated campaign ID" },
+        "title": { "type": "string", "maxLength": 200, "description": "Title of expense" },
+        "amount": { "type": "number", "description": "Expense amount in BDT" },
+        "category": { "type": "string", "maxLength": 100, "description": "Category" },
+        "voucherNo": { "type": "string", "maxLength": 50, "description": "Voucher or receipt number" },
+        "date": { "type": "string", "maxLength": 40, "description": "Date of expense" },
+        "description": { "type": "string", "maxLength": 500, "description": "Details" },
+        "approvedBy": { "type": "string", "description": "Admin UID" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["campaignId", "title", "amount", "date"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Social service event (medical camp, blood drive, winter cloth distribution)",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200, "description": "Event title" },
+        "description": { "type": "string", "maxLength": 2000, "description": "Event overview" },
+        "location": { "type": "string", "maxLength": 200, "description": "Venue and location" },
+        "district": { "type": "string", "maxLength": 60, "description": "District" },
+        "date": { "type": "string", "maxLength": 50, "description": "Event date & time" },
+        "capacity": { "type": "number", "description": "Volunteer or participant capacity" },
+        "registeredCount": { "type": "number", "description": "Current registrations" },
+        "status": { "type": "string", "enum": ["upcoming", "ongoing", "completed", "cancelled"], "description": "Event status" },
+        "completionReport": { "type": "string", "maxLength": 2000, "description": "Final impact report" },
+        "bannerUrl": { "type": "string", "maxLength": 500, "description": "Banner image" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["title", "location", "district", "date", "status"]
+    },
+    "EventRegistration": {
+      "title": "EventRegistration",
+      "description": "User participation registration for welfare events",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string", "description": "Event ID" },
+        "userId": { "type": "string", "description": "User UID" },
+        "userName": { "type": "string", "maxLength": 100, "description": "User Name" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Phone number" },
+        "rolePreference": { "type": "string", "maxLength": 100, "description": "Volunteer or beneficiary" },
+        "status": { "type": "string", "enum": ["confirmed", "attended", "cancelled"], "description": "Registration status" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["eventId", "userId", "userName", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Targeted user notifications with unread tracking and deep links",
+      "type": "object",
+      "properties": {
+        "recipientId": { "type": "string", "description": "Target user UID or 'all'" },
+        "title": { "type": "string", "maxLength": 150, "description": "Notification title" },
+        "message": { "type": "string", "maxLength": 500, "description": "Message content" },
+        "type": { "type": "string", "enum": ["help_status", "donation_verified", "volunteer", "event", "announcement", "receipt"], "description": "Category" },
+        "link": { "type": "string", "maxLength": 100, "description": "Tab or screen link" },
+        "isRead": { "type": "boolean", "description": "Read state" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["recipientId", "title", "message", "type", "isRead", "createdAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Secure conversation thread attached to a help request",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string", "description": "Help request ID" },
+        "applicantId": { "type": "string", "description": "Applicant UID" },
+        "applicantName": { "type": "string", "maxLength": 100, "description": "Applicant Name" },
+        "requestTitle": { "type": "string", "maxLength": 200, "description": "Help Request Title" },
+        "lastMessage": { "type": "string", "maxLength": 500, "description": "Snippet of last message" },
+        "updatedAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["requestId", "applicantId", "applicantName", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Message in a help request conversation",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string", "description": "Conversation ID" },
+        "senderId": { "type": "string", "description": "Sender UID" },
+        "senderName": { "type": "string", "maxLength": 100, "description": "Sender display name" },
+        "senderRole": { "type": "string", "enum": ["applicant", "admin", "support"], "description": "Sender role" },
+        "text": { "type": "string", "maxLength": 2000, "description": "Message body" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["conversationId", "senderId", "senderName", "senderRole", "text", "createdAt"]
+    },
+    "VerificationRequest": {
+      "title": "VerificationRequest",
+      "description": "Profile verification submission for trustworthy citizen badge",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "User UID" },
+        "userName": { "type": "string", "maxLength": 100, "description": "Full name" },
+        "idType": { "type": "string", "enum": ["nid", "birth_cert", "passport"], "description": "Identity Document Type" },
+        "idNumberMasked": { "type": "string", "maxLength": 40, "description": "Masked ID digits (e.g. 1990xxxx123)" },
+        "reason": { "type": "string", "maxLength": 500, "description": "Why verification is requested" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"], "description": "Review status" },
+        "reviewerNotes": { "type": "string", "maxLength": 500, "description": "Admin review comments" },
+        "reviewedBy": { "type": "string", "description": "Admin UID" },
+        "submittedAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["userId", "userName", "idType", "idNumberMasked", "status", "submittedAt"]
+    },
+    "ItemListing": {
+      "title": "ItemListing",
+      "description": "Food and clothes bank item listing for donation or distribution",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150, "description": "Item description" },
+        "category": { "type": "string", "enum": ["food", "clothes", "books", "medical_equipment", "essentials"], "description": "Item type" },
+        "quantity": { "type": "number", "description": "Available stock quantity" },
+        "condition": { "type": "string", "enum": ["new", "good_used", "clean"], "description": "Condition of physical items" },
+        "district": { "type": "string", "maxLength": 60, "description": "Storage/donor district" },
+        "upazila": { "type": "string", "maxLength": 60, "description": "Upazila" },
+        "offeredBy": { "type": "string", "description": "Donor UID or organization" },
+        "donorName": { "type": "string", "maxLength": 100, "description": "Donor Name" },
+        "status": { "type": "string", "enum": ["available", "reserved", "distributed"], "description": "Stock status" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["title", "category", "quantity", "district", "status"]
+    },
+    "ItemClaim": {
+      "title": "ItemClaim",
+      "description": "Request or claim for item from clothes and food bank",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string", "description": "Item listing ID" },
+        "itemTitle": { "type": "string", "maxLength": 150, "description": "Item title" },
+        "claimantId": { "type": "string", "description": "Claimant UID" },
+        "claimantName": { "type": "string", "maxLength": 100, "description": "Claimant name" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Contact phone" },
+        "quantity": { "type": "number", "description": "Requested quantity" },
+        "status": { "type": "string", "enum": ["pending", "approved", "distributed", "rejected"], "description": "Claim status" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["itemId", "claimantId", "claimantName", "phone", "quantity", "status"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "Report or complaint about fake requests, spam, or abuse",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string", "description": "Reporter UID or 'anonymous'" },
+        "targetType": { "type": "string", "enum": ["help_request", "blood_donor", "campaign", "user", "other"], "description": "Report target" },
+        "targetId": { "type": "string", "maxLength": 100, "description": "Reference ID or link" },
+        "reason": { "type": "string", "maxLength": 200, "description": "Category of grievance" },
+        "details": { "type": "string", "maxLength": 1500, "description": "Explanation" },
+        "status": { "type": "string", "enum": ["open", "investigating", "resolved", "dismissed"], "description": "Status" },
+        "resolutionNotes": { "type": "string", "maxLength": 500, "description": "Admin resolution note" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["targetType", "reason", "details", "status", "createdAt"]
+    },
+    "VolunteerActivityLedger": {
+      "title": "VolunteerActivityLedger",
+      "description": "Verified points ledger for volunteer rewards and gamified recognition",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Volunteer UID" },
+        "volunteerName": { "type": "string", "maxLength": 100, "description": "Volunteer display name" },
+        "activityTitle": { "type": "string", "maxLength": 200, "description": "Activity description" },
+        "points": { "type": "number", "description": "Points awarded" },
+        "approvedBy": { "type": "string", "description": "Admin UID" },
+        "timestamp": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["userId", "activityTitle", "points", "approvedBy", "timestamp"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Verifiable volunteer recognition certificate",
+      "type": "object",
+      "properties": {
+        "certificateNo": { "type": "string", "maxLength": 40, "description": "Unique Certificate ID (e.g. CERT-MS-2026-1001)" },
+        "userId": { "type": "string", "description": "Recipient UID" },
+        "volunteerName": { "type": "string", "maxLength": 100, "description": "Volunteer name" },
+        "role": { "type": "string", "maxLength": 100, "description": "Role / distinction" },
+        "pointsEarned": { "type": "number", "description": "Points confirmed" },
+        "issuedAt": { "type": "string", "description": "Issue date" }
+      },
+      "required": ["certificateNo", "userId", "volunteerName", "issuedAt"]
+    },
+    "ReliefDistribution": {
+      "title": "ReliefDistribution",
+      "description": "Physical relief items distribution audit entry",
+      "type": "object",
+      "properties": {
+        "campaignId": { "type": "string", "description": "Campaign ID" },
+        "itemType": { "type": "string", "maxLength": 100, "description": "Rice, blankets, medicine kits, etc." },
+        "quantity": { "type": "number", "description": "Packages distributed" },
+        "location": { "type": "string", "maxLength": 200, "description": "Distribution spot" },
+        "district": { "type": "string", "maxLength": 60, "description": "District" },
+        "handlerName": { "type": "string", "maxLength": 100, "description": "Team lead name" },
+        "date": { "type": "string", "maxLength": 40, "description": "Date" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Field notes" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["itemType", "quantity", "location", "district", "date"]
+    },
+    "PublishedStory": {
+      "title": "PublishedStory",
+      "description": "Anonymized, verified good deeds and completed impact stories",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200, "description": "Story headline" },
+        "excerpt": { "type": "string", "maxLength": 300, "description": "Short excerpt" },
+        "content": { "type": "string", "maxLength": 3000, "description": "Story content" },
+        "category": { "type": "string", "enum": ["medical", "flood", "education", "blood", "general"], "description": "Category" },
+        "location": { "type": "string", "maxLength": 100, "description": "District / area" },
+        "authorName": { "type": "string", "maxLength": 100, "description": "Reporter or volunteer author" },
+        "isApproved": { "type": "boolean", "description": "Admin approved state" },
+        "publishedAt": { "type": "string", "description": "Publication timestamp" }
+      },
+      "required": ["title", "content", "category", "isApproved", "publishedAt"]
+    },
+    "Organization": {
+      "title": "Organization",
+      "description": "Verified partner welfare organizations and NGOs",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 150, "description": "Organization name" },
+        "registrationNo": { "type": "string", "maxLength": 50, "description": "Govt/Social Welfare reg no" },
+        "representativeName": { "type": "string", "maxLength": 100, "description": "Authorized head" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Official phone" },
+        "email": { "type": "string", "maxLength": 120, "description": "Official email" },
+        "district": { "type": "string", "maxLength": 60, "description": "Headquarters district" },
+        "focusArea": { "type": "string", "maxLength": 200, "description": "Focus areas" },
+        "status": { "type": "string", "enum": ["pending", "verified", "suspended"], "description": "Partnership status" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["name", "representativeName", "phone", "district", "status"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Public notice and banner broadcast",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200, "description": "Title" },
+        "content": { "type": "string", "maxLength": 1000, "description": "Notice text" },
+        "type": { "type": "string", "enum": ["urgent", "info", "success"], "description": "Banner tone" },
+        "isActive": { "type": "boolean", "description": "Active state" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["title", "content", "type", "isActive"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security and administrative action audit record",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "maxLength": 100, "description": "Action performed" },
+        "performedBy": { "type": "string", "description": "Admin UID" },
+        "targetEntity": { "type": "string", "maxLength": 50, "description": "Collection affected" },
+        "targetId": { "type": "string", "maxLength": 100, "description": "Document ID affected" },
+        "details": { "type": "string", "maxLength": 500, "description": "Summary of change or reason" },
+        "timestamp": { "type": "string", "description": "Audit timestamp" }
+      },
+      "required": ["action", "performedBy", "targetEntity", "timestamp"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Platform basic configuration and contact details",
+      "type": "object",
+      "properties": {
+        "platformName": { "type": "string", "maxLength": 150 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "helplinePhone": { "type": "string", "maxLength": 30 },
+        "helplineAltPhone": { "type": "string", "maxLength": 30 },
+        "contactEmail": { "type": "string", "maxLength": 120 },
+        "officeAddress": { "type": "string", "maxLength": 300 },
+        "bkashNumber": { "type": "string", "maxLength": 30 },
+        "nagadNumber": { "type": "string", "maxLength": 30 },
+        "rocketNumber": { "type": "string", "maxLength": 30 },
+        "bankAccountName": { "type": "string", "maxLength": 100 },
+        "bankName": { "type": "string", "maxLength": 100 },
+        "bankAccountNumber": { "type": "string", "maxLength": 60 },
+        "bankBranch": { "type": "string", "maxLength": 100 },
+        "bankRoutingNo": { "type": "string", "maxLength": 40 },
+        "emergencyNoticeActive": { "type": "boolean" },
+        "emergencyNoticeText": { "type": "string", "maxLength": 1000 },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile records"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Administrator authorizations for RBAC"
+    },
+    "/help_requests/{requestId}": {
+      "schema": "HelpRequest",
+      "description": "Citizen humanitarian help requests"
+    },
+    "/blood_donors/{donorId}": {
+      "schema": "BloodDonor",
+      "description": "Blood donor registry"
+    },
+    "/blood_requests/{requestId}": {
+      "schema": "BloodRequest",
+      "description": "Urgent blood requests"
+    },
+    "/volunteer_applications/{applicationId}": {
+      "schema": "VolunteerApplication",
+      "description": "Volunteer membership applications"
+    },
+    "/campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "Humanitarian relief and fundraising campaigns"
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Manual donation transaction records pending or verified"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Expense vouchers and logs for financial transparency"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Humanitarian outreach events"
+    },
+    "/event_registrations/{registrationId}": {
+      "schema": "EventRegistration",
+      "description": "Registrations for events"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Targeted smart notifications"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Secure help request chat threads"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages inside help chats"
+    },
+    "/verification_requests/{requestId}": {
+      "schema": "VerificationRequest",
+      "description": "Profile verification applications"
+    },
+    "/item_listings/{itemId}": {
+      "schema": "ItemListing",
+      "description": "Food and clothes bank item stock"
+    },
+    "/item_claims/{claimId}": {
+      "schema": "ItemClaim",
+      "description": "Claims on food and clothes bank items"
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Citizen grievance and fake request reports"
+    },
+    "/volunteer_activity_ledger/{ledgerId}": {
+      "schema": "VolunteerActivityLedger",
+      "description": "Immutable ledger of awarded volunteer reward points"
+    },
+    "/certificates/{certId}": {
+      "schema": "Certificate",
+      "description": "Volunteer reward certificates"
+    },
+    "/relief_distributions/{distributionId}": {
+      "schema": "ReliefDistribution",
+      "description": "Relief item distribution audit logs"
+    },
+    "/published_stories/{storyId}": {
+      "schema": "PublishedStory",
+      "description": "Approved good deed and impact stories"
+    },
+    "/organizations/{orgId}": {
+      "schema": "Organization",
+      "description": "Partner welfare organizations"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Public notices and news banners"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable security logs for admin operations"
+    },
+    "/system_settings/{settingId}": {
+      "schema": "SystemSettings",
+      "description": "Platform basic configuration and contact details"
+    }
+  }
+}

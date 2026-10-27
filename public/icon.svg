@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#grad)" />
+  <g fill="#ffffff" transform="translate(106, 106) scale(0.585)">
+    <!-- Heart & Helping Hands / Humanitarian Emblem -->
+    <path d="M256 470s-160-96-200-192c-35-84 10-178 100-178 50 0 85 30 100 55 15-25 50-55 100-55 90 0 135 94 100 178-40 96-200 192-200 192z" fill="#ffffff" opacity="0.95"/>
+    <path d="M256 160c-25-30-65-45-105-30-45 18-65 68-45 110 25 55 150 140 150 140s125-85 150-140c20-42 0-92-45-110-40-15-80 0-105 30z" fill="#10b981" />
+    <circle cx="256" cy="240" r="35" fill="#ffffff" />
+  </g>
+</svg>

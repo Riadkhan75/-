@@ -1,0 +1,19 @@
+{
+  "name": "মানবতার সেবা - Manobotar Sheba",
+  "short_name": "মানবতার সেবা",
+  "description": "একসঙ্গে মানুষের পাশে – রক্তদান, জরুরি মানবিক সাহায্য, স্বেচ্ছাসেবা ও অনুদান প্ল্যাটফর্ম",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#065f46",
+  "orientation": "portrait",
+  "lang": "bn",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

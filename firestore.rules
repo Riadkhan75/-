@@ -1,0 +1,283 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == 'WFD8pFEcDeUKHHDCU9vnQ7Ve6an1' ||
+        request.auth.token.email == 'nazrulpost75@gmail.com' ||
+        (request.auth.token.email != null && request.auth.token.email.lower() == 'nazrulpost75@gmail.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'])
+      );
+    }
+
+    // 1. Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) &&
+        incoming().uid == request.auth.uid &&
+        incoming().displayName is string && incoming().displayName.size() <= 100 &&
+        incoming().email is string && incoming().email.size() <= 120 &&
+        (!('role' in incoming()) || incoming().role == 'user' || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) &&
+        incoming().uid == existing().uid &&
+        (!('role' in incoming()) || incoming().role == existing().role || isAdmin()) &&
+        (!('isVerified' in incoming()) || incoming().isVerified == existing().isVerified || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // 2. Admins collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 3. Help Requests
+    match /help_requests/{requestId} {
+      allow read: if (isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin())) ||
+        resource.data.isPublic == true;
+      allow create: if isSignedIn() &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().referenceNo is string && incoming().referenceNo.size() <= 30 &&
+        incoming().applicantName is string && incoming().applicantName.size() <= 100 &&
+        incoming().category in ['medical', 'education', 'food', 'clothing', 'emergency', 'other'] &&
+        incoming().title is string && incoming().title.size() <= 200 &&
+        incoming().description is string && incoming().description.size() <= 2000 &&
+        incoming().district is string && incoming().district.size() <= 60 &&
+        incoming().status == 'pending';
+      allow update: if isAdmin() || (
+        isOwner(existing().ownerId) &&
+        existing().status == 'pending' &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().status == 'pending'
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 4. Blood Donors (Public search enabled for life-saving access)
+    match /blood_donors/{donorId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        incoming().donorName is string && incoming().donorName.size() <= 100 &&
+        incoming().bloodGroup in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] &&
+        incoming().district is string && incoming().district.size() <= 60 &&
+        incoming().phone is string && incoming().phone.size() <= 20 &&
+        incoming().isAvailable is bool;
+      allow update: if isOwner(existing().userId) || isAdmin();
+      allow delete: if isOwner(existing().userId) || isAdmin();
+    }
+
+    // 5. Blood Requests
+    match /blood_requests/{requestId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        incoming().requesterId == request.auth.uid &&
+        incoming().bloodGroup in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] &&
+        incoming().hospital is string && incoming().hospital.size() <= 150 &&
+        incoming().district is string && incoming().district.size() <= 60 &&
+        incoming().urgency in ['critical', 'emergency', 'standard'] &&
+        incoming().contactPhone is string && incoming().contactPhone.size() <= 20;
+      allow update: if isOwner(existing().requesterId) || isAdmin();
+      allow delete: if isOwner(existing().requesterId) || isAdmin();
+    }
+
+    // 6. Volunteer Applications
+    match /volunteer_applications/{appId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        incoming().name is string && incoming().name.size() <= 100 &&
+        incoming().phone is string && incoming().phone.size() <= 20 &&
+        incoming().district is string && incoming().district.size() <= 60 &&
+        incoming().skills is string && incoming().skills.size() <= 300 &&
+        incoming().status == 'pending';
+      allow update: if isAdmin() || (
+        isOwner(existing().userId) && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['optOutLeaderboard'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 7. Campaigns (Public read)
+    match /campaigns/{campaignId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 8. Donations
+    match /donations/{donationId} {
+      allow read: if (isSignedIn() && (resource.data.donorId == request.auth.uid || isAdmin())) || isAdmin();
+      allow create: if incoming().amount is number && incoming().amount > 0 &&
+        incoming().paymentMethod in ['bkash', 'nagad', 'rocket', 'bank', 'cash'] &&
+        incoming().transactionId is string && incoming().transactionId.size() <= 60 &&
+        incoming().status == 'pending_verification';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 9. Expenses (Public transparency)
+    match /expenses/{expenseId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 10. Events (Public read)
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 11. Event Registrations
+    match /event_registrations/{regId} {
+      allow read: if (isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin())) || isAdmin();
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        incoming().userName is string && incoming().userName.size() <= 100 &&
+        incoming().status in ['confirmed', 'attended', 'cancelled'];
+      allow update: if isOwner(existing().userId) || isAdmin();
+      allow delete: if isOwner(existing().userId) || isAdmin();
+    }
+
+    // 12. Smart Notifications
+    match /notifications/{notificationId} {
+      allow read: if (isSignedIn() && (resource.data.recipientId == request.auth.uid || resource.data.recipientId == 'all')) || isAdmin();
+      allow create: if isAdmin() || isSignedIn();
+      allow update: if (isSignedIn() && resource.data.recipientId == request.auth.uid) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.recipientId == request.auth.uid) || isAdmin();
+    }
+
+    // 13. Help Request Chat Conversations
+    match /conversations/{conversationId} {
+      allow read: if (isSignedIn() && (resource.data.applicantId == request.auth.uid || isAdmin()));
+      allow create: if isSignedIn() && (incoming().applicantId == request.auth.uid || isAdmin());
+      allow update: if (isSignedIn() && (resource.data.applicantId == request.auth.uid || isAdmin()));
+      allow delete: if isAdmin();
+    }
+
+    // 14. Chat Messages
+    match /messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().senderId == request.auth.uid &&
+        incoming().text is string && incoming().text.size() <= 2000;
+      allow update, delete: if isAdmin();
+    }
+
+    // 15. Profile Verification Requests
+    match /verification_requests/{requestId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && incoming().status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 16. Clothes and Food Bank Item Listings
+    match /item_listings/{itemId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isOwner(existing().offeredBy) || isAdmin();
+      allow delete: if isOwner(existing().offeredBy) || isAdmin();
+    }
+
+    // 17. Clothes and Food Bank Item Claims
+    match /item_claims/{claimId} {
+      allow read: if (isSignedIn() && resource.data.claimantId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && incoming().claimantId == request.auth.uid && incoming().status == 'pending';
+      allow update: if isAdmin() || (isOwner(existing().claimantId) && incoming().status in ['cancelled']);
+      allow delete: if isAdmin();
+    }
+
+    // 18. Report and Complaints
+    match /complaints/{complaintId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() || incoming().reporterId == 'anonymous';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 19. Volunteer Activity Ledger (Append-only by Admin)
+    match /volunteer_activity_ledger/{ledgerId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // 20. Certificates (Verifiable Public QR link)
+    match /certificates/{certId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 21. Relief Distributions (Public transparency)
+    match /relief_distributions/{distributionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 22. Published Stories
+    match /published_stories/{storyId} {
+      allow read: if resource.data.isApproved == true || isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 23. Organizations Partnerships
+    match /organizations/{orgId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 24. Announcements (Public read)
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 25. Audit Logs (Immutable, Admin only)
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() &&
+        incoming().action is string && incoming().action.size() <= 100 &&
+        incoming().targetEntity is string && incoming().targetEntity.size() <= 50;
+      allow update, delete: if false; // Immutable audit trail
+    }
+
+    // 26. System Settings
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
+
