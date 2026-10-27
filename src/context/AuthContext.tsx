@@ -69,11 +69,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsSuperAdmin(isCurrentSuperAdmin);
       }
     } catch (err) {
-      console.error('Error fetching/creating user profile:', err);
-      // Fallback role check using email directly
+      console.warn('Notice fetching user profile (operating in offline fallback mode):', err);
+      // Fallback role check and profile using auth data directly
       const isCurrentSuperAdmin = currentUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+      const fallbackProfile: UserProfile = {
+        uid: currentUser.uid,
+        displayName: currentUser.displayName || 'সম্মানিত নাগরিক',
+        email: currentUser.email || '',
+        role: isCurrentSuperAdmin ? 'superadmin' : 'user',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setUserProfile((prev) => prev || fallbackProfile);
       setIsAdmin(isCurrentSuperAdmin);
       setIsSuperAdmin(isCurrentSuperAdmin);
+
+      // If temporarily offline, retry after connection settles
+      if (err instanceof Error && (err.message.includes('offline') || err.message.includes('backend'))) {
+        setTimeout(() => {
+          fetchUserProfile(currentUser).catch(() => {});
+        }, 3000);
+      }
     }
   };
 

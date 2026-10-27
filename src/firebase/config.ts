@@ -1,14 +1,25 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, doc, getDocFromServer, Firestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 /* CRITICAL: Specifies the provisioned database ID (e.g. ai-studio-c6659150-29e1-4a2f-9087-1cea99a72b3e) */
-export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+const dbId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+  ? firebaseConfig.firestoreDatabaseId
+  : undefined;
+
+let firestoreInstance: Firestore;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    experimentalForceLongPolling: true
+  }, dbId);
+} catch (e) {
+  firestoreInstance = dbId ? getFirestore(app, dbId) : getFirestore(app);
+}
+
+export const db = firestoreInstance;
 export const auth = getAuth(app);
 
 // Test Firestore connection on boot as required by system guidelines
