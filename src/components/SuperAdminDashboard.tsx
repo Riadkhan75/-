@@ -169,8 +169,10 @@ export const SuperAdminDashboard: React.FC = () => {
   const [announceContent, setAnnounceContent] = useState('');
   const [announceType, setAnnounceType] = useState<'urgent' | 'info' | 'success'>('urgent');
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
     try {
       const [
         liveStats, 
@@ -224,7 +226,9 @@ export const SuperAdminDashboard: React.FC = () => {
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   };
 
@@ -259,15 +263,19 @@ export const SuperAdminDashboard: React.FC = () => {
   // Action: Approve Help Request
   const handleApproveHelp = async (req: HelpRequest) => {
     try {
-      await updateHelpRequestStatus(req.id, 'approved', adminNote || 'সরেজমিনে তথ্য যাচাই করে আবেদনটি অনুমোদিত হয়েছে।', true);
-      if (user) {
-        await logAdminAudit('approve_help_request', user.uid, 'help_requests', req.id, `আবেদন #${req.referenceNo} অনুমোদিত`);
-      }
-      showMsg('success', `আবেদন ${req.referenceNo} সফলভাবে অনুমোদিত হয়েছে।`);
+      const note = adminNote || 'সরেজমিনে তথ্য যাচাই করে আবেদনটি অনুমোদিত হয়েছে।';
+      setHelpRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved', adminNotes: note } : r));
       setSelectedHelpReq(null);
-      await loadAllData();
+      showMsg('success', `আবেদন ${req.referenceNo} সফলভাবে অনুমোদিত হয়েছে।`);
+
+      await updateHelpRequestStatus(req.id, 'approved', note, true);
+      if (user) {
+        logAdminAudit('approve_help_request', user.uid, 'help_requests', req.id, `আবেদন #${req.referenceNo} অনুমোদিত`).catch(() => {});
+      }
+      loadAllData(true);
     } catch (err: any) {
       showMsg('error', 'অনুমোদন ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -278,16 +286,20 @@ export const SuperAdminDashboard: React.FC = () => {
       return;
     }
     try {
-      await updateHelpRequestStatus(req.id, 'rejected', rejectReason.trim(), false);
-      if (user) {
-        await logAdminAudit('reject_help_request', user.uid, 'help_requests', req.id, `আবেদন #${req.referenceNo} বাতিল। কারণ: ${rejectReason}`);
-      }
-      showMsg('success', `আবেদন ${req.referenceNo} বাতিল করা হয়েছে।`);
+      const reason = rejectReason.trim();
+      setHelpRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'rejected', adminNotes: reason } : r));
       setSelectedHelpReq(null);
       setRejectReason('');
-      await loadAllData();
+      showMsg('success', `আবেদন ${req.referenceNo} বাতিল করা হয়েছে।`);
+
+      await updateHelpRequestStatus(req.id, 'rejected', reason, false);
+      if (user) {
+        logAdminAudit('reject_help_request', user.uid, 'help_requests', req.id, `আবেদন #${req.referenceNo} বাতিল। কারণ: ${reason}`).catch(() => {});
+      }
+      loadAllData(true);
     } catch (err: any) {
       showMsg('error', 'বাতিলকরণ ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -296,11 +308,13 @@ export const SuperAdminDashboard: React.FC = () => {
     if (!user) return;
     try {
       const receipt = await verifyDonationAdmin(d.id, user.uid);
-      await logAdminAudit('verify_donation', user.uid, 'donations', d.id, `অনুদান TrxID ${d.transactionId} যাচাইকৃত (${d.amount} ৳)। রসিদ: ${receipt}`);
+      setDonations(prev => prev.map(item => item.id === d.id ? { ...item, status: 'verified', receiptNo: receipt } : item));
       showMsg('success', `অনুদান সফলভাবে যাচাইকৃত হয়েছে! ইস্যুকৃত রসিদ নম্বর: ${receipt}`);
-      await loadAllData();
+      logAdminAudit('verify_donation', user.uid, 'donations', d.id, `অনুদান TrxID ${d.transactionId} যাচাইকৃত (${d.amount} ৳)। রসিদ: ${receipt}`).catch(() => {});
+      loadAllData(true);
     } catch (err: any) {
       showMsg('error', 'অনুদান যাচাইয়ে ত্রুটি হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -310,12 +324,14 @@ export const SuperAdminDashboard: React.FC = () => {
     const reason = prompt('অনুদান বাতিলের কারণ লিখুন (উদাঃ স্টেটমেন্টে TrxID পাওয়া যায়নি):');
     if (!reason) return;
     try {
-      await rejectDonationAdmin(d.id, user.uid, reason);
-      await logAdminAudit('reject_donation', user.uid, 'donations', d.id, `অনুদান TrxID ${d.transactionId} প্রত্যাখ্যাত। কারণ: ${reason}`);
+      setDonations(prev => prev.map(item => item.id === d.id ? { ...item, status: 'rejected', rejectionReason: reason } : item));
       showMsg('success', 'অনুদান বাতিল রেকর্ড সংরক্ষণ করা হয়েছে।');
-      await loadAllData();
+      await rejectDonationAdmin(d.id, user.uid, reason);
+      logAdminAudit('reject_donation', user.uid, 'donations', d.id, `অনুদান TrxID ${d.transactionId} প্রত্যাখ্যাত। কারণ: ${reason}`).catch(() => {});
+      loadAllData(true);
     } catch (err: any) {
       showMsg('error', 'বাতিলকরণ ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -324,24 +340,28 @@ export const SuperAdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     try {
-      await createCampaignAdmin({
+      const newCampData = {
         title: newCampTitle.trim(),
         description: newCampDesc.trim(),
         category: newCampCategory,
         targetAmount: parseFloat(newCampTarget) || 0,
-        status: 'active',
+        status: 'active' as const,
         featured: true,
         createdBy: user.uid
-      });
-      await logAdminAudit('create_campaign', user.uid, 'campaigns', 'new', `নতুন ক্যাম্পেইন তৈরি: ${newCampTitle}`);
-      showMsg('success', 'নতুন ক্যাম্পেইন সফলভাবে তৈরি হয়েছে!');
+      };
       setShowNewCampModal(false);
       setNewCampTitle('');
       setNewCampDesc('');
       setNewCampTarget('');
-      await loadAllData();
+      showMsg('success', 'নতুন ক্যাম্পেইন সফলভাবে তৈরি হয়েছে!');
+
+      const id = await createCampaignAdmin(newCampData);
+      setCampaigns(prev => [{ id, ...newCampData, collectedAmount: 0, donorCount: 0, createdAt: new Date().toISOString() }, ...prev]);
+      logAdminAudit('create_campaign', user.uid, 'campaigns', id, `নতুন ক্যাম্পেইন তৈরি: ${newCampData.title}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'ক্যাম্পেইন তৈরিতে সমস্যা হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -354,12 +374,14 @@ export const SuperAdminDashboard: React.FC = () => {
     if (!confirm) return;
 
     try {
-      await deleteCampaignAdmin(campId);
-      await logAdminAudit('delete_campaign', user.uid, 'campaigns', campId, `ক্যাম্পেইন "${title}" মুছে ফেলা হয়েছে`);
+      setCampaigns(prev => prev.filter(c => c.id !== campId));
       showMsg('success', `ক্যাম্পেইন "${title}" সফলভাবে মুছে ফেলা হয়েছে!`);
-      await loadAllData();
+      await deleteCampaignAdmin(campId);
+      logAdminAudit('delete_campaign', user.uid, 'campaigns', campId, `ক্যাম্পেইন "${title}" মুছে ফেলা হয়েছে`).catch(() => {});
+      loadAllData(true);
     } catch (err: any) {
       showMsg('error', 'ক্যাম্পেইন ডিলিট করতে ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -369,10 +391,18 @@ export const SuperAdminDashboard: React.FC = () => {
     if (!user) return;
     setSavingSettings(true);
     try {
-      await updateSystemSettings(settings, user.uid);
-      await logAdminAudit('update_settings', user.uid, 'system_settings', 'general', 'বেসিক সিস্টেম সেটিংস ও পেমেন্ট তথ্য আপডেট করা হয়েছে');
+      const updatedSettings = {
+        ...settings,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user.uid
+      };
+      setSettings(updatedSettings);
       showMsg('success', 'প্ল্যাটফর্মের বেসিক সেটিংস সফলভাবে সংরক্ষিত ও আপডেট হয়েছে!');
+
+      await updateSystemSettings(updatedSettings, user.uid);
+      loadAllData(true);
     } catch (err: any) {
+      console.error('Settings save error:', err);
       showMsg('error', 'সেটিংস সংরক্ষণে সমস্যা দেখা দিয়েছে।');
     } finally {
       setSavingSettings(false);
@@ -384,7 +414,7 @@ export const SuperAdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!user || !selectedCampForExpense) return;
     try {
-      await addCampaignExpenseAdmin({
+      const expData = {
         campaignId: selectedCampForExpense.id,
         title: expenseTitle.trim(),
         amount: parseFloat(expenseAmount) || 0,
@@ -392,16 +422,19 @@ export const SuperAdminDashboard: React.FC = () => {
         voucherNo: expenseVoucher.trim() || `VOUCH-${Date.now().toString().slice(-4)}`,
         date: expenseDate || new Date().toISOString(),
         approvedBy: user.uid
-      });
-      await logAdminAudit('add_expense', user.uid, 'expenses', selectedCampForExpense.id, `ব্যয় যুক্ত: ${expenseTitle} (${expenseAmount} ৳)`);
-      showMsg('success', 'ব্যয়ের হিসাব ও ভাউচার সফলভাবে যুক্ত হয়েছে!');
+      };
       setSelectedCampForExpense(null);
       setExpenseTitle('');
       setExpenseAmount('');
       setExpenseVoucher('');
-      await loadAllData();
+      showMsg('success', 'ব্যয়ের হিসাব ও ভাউচার সফলভাবে যুক্ত হয়েছে!');
+
+      await addCampaignExpenseAdmin(expData);
+      logAdminAudit('add_expense', user.uid, 'expenses', expData.campaignId, `ব্যয় যুক্ত: ${expData.title} (${expData.amount} ৳)`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'ব্যয় যুক্ত হতে ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -409,12 +442,14 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleVolunteerAction = async (vol: VolunteerApplication, status: VolunteerStatus) => {
     if (!user) return;
     try {
-      await updateVolunteerStatusAdmin(vol.id, status, vol.preferredTeam);
-      await logAdminAudit('update_volunteer_status', user.uid, 'volunteer_applications', vol.id, `স্বেচ্ছাসেবক ${vol.name} এর স্ট্যাটাস: ${status}`);
+      setVolunteers(prev => prev.map(v => v.id === vol.id ? { ...v, status } : v));
       showMsg('success', `স্বেচ্ছাসেবক আবেদন আপডেট করা হয়েছে।`);
-      await loadAllData();
+      await updateVolunteerStatusAdmin(vol.id, status, vol.preferredTeam);
+      logAdminAudit('update_volunteer_status', user.uid, 'volunteer_applications', vol.id, `স্বেচ্ছাসেবক ${vol.name} এর স্ট্যাটাস: ${status}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'আপডেট ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -423,23 +458,27 @@ export const SuperAdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     try {
-      await createEventAdmin({
+      const evData = {
         title: newEventTitle.trim(),
         description: newEventDesc.trim(),
         location: newEventLoc.trim(),
         district: newEventDistrict,
         date: newEventDate.trim(),
-        status: 'upcoming'
-      });
-      await logAdminAudit('create_event', user.uid, 'events', 'new', `নতুন ইভেন্ট: ${newEventTitle}`);
-      showMsg('success', 'নতুন ইভেন্ট সফলভাবে তৈরি হয়েছে!');
+        status: 'upcoming' as const
+      };
       setShowNewEventModal(false);
       setNewEventTitle('');
       setNewEventDesc('');
       setNewEventLoc('');
-      await loadAllData();
+      showMsg('success', 'নতুন ইভেন্ট সফলভাবে তৈরি হয়েছে!');
+
+      const id = await createEventAdmin(evData);
+      setEvents(prev => [{ id, ...evData, registeredCount: 0, createdAt: new Date().toISOString() }, ...prev]);
+      logAdminAudit('create_event', user.uid, 'events', id, `নতুন ইভেন্ট: ${evData.title}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'ইভেন্ট তৈরিতে সমস্যা হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -448,20 +487,24 @@ export const SuperAdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     try {
-      await createAnnouncementAdmin({
+      const anData = {
         title: announceTitle.trim(),
         content: announceContent.trim(),
         type: announceType,
         isActive: true
-      });
-      await logAdminAudit('create_announcement', user.uid, 'announcements', 'new', `নোটিশ প্রকাশ: ${announceTitle}`);
-      showMsg('success', 'জরুরি নোটিশ সফলভাবে প্রকাশ করা হয়েছে!');
+      };
       setShowNewAnnounceModal(false);
       setAnnounceTitle('');
       setAnnounceContent('');
-      await loadAllData();
+      showMsg('success', 'জরুরি নোটিশ সফলভাবে প্রকাশ করা হয়েছে!');
+
+      const id = await createAnnouncementAdmin(anData);
+      setAnnouncements(prev => [{ id, ...anData, createdAt: new Date().toISOString() }, ...prev]);
+      logAdminAudit('create_announcement', user.uid, 'announcements', id, `নোটিশ প্রকাশ: ${anData.title}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'নোটিশ প্রকাশে সমস্যা হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -472,12 +515,14 @@ export const SuperAdminDashboard: React.FC = () => {
     if (notes === null) return;
 
     try {
-      await reviewVerificationRequestAdmin(req.id, req.userId, status, notes, user.uid);
-      await logAdminAudit('review_verification', user.uid, 'verification_requests', req.id, `ইউজার ${req.userName} ভেরিফিকেশন: ${status}`);
+      setVerifications(prev => prev.map(v => v.id === req.id ? { ...v, status, reviewerNotes: notes } : v));
       showMsg('success', `ভেরিফিকেশন স্ট্যাটাস সফলভাবে আপডেট করা হয়েছে: ${status === 'verified' ? 'নীল ব্যাজ প্রদান করা হয়েছে' : 'বাতিল'}`);
-      await loadAllData();
+      await reviewVerificationRequestAdmin(req.id, req.userId, status, notes, user.uid);
+      logAdminAudit('review_verification', user.uid, 'verification_requests', req.id, `ইউজার ${req.userName} ভেরিফিকেশন: ${status}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'ভেরিফিকেশন পর্যালোচনায় ত্রুটি হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -488,12 +533,14 @@ export const SuperAdminDashboard: React.FC = () => {
     if (notes === null) return;
 
     try {
-      await updateComplaintStatusAdmin(comp.id, status, notes);
-      await logAdminAudit('update_complaint', user.uid, 'complaints', comp.id, `অভিযোগ #${comp.id.slice(0, 6)} স্ট্যাটাস: ${status}`);
+      setComplaints(prev => prev.map(c => c.id === comp.id ? { ...c, status, resolutionNotes: notes } : c));
       showMsg('success', 'অভিযোগ স্ট্যাটাস সফলভাবে আপডেট হয়েছে।');
-      await loadAllData();
+      await updateComplaintStatusAdmin(comp.id, status, notes);
+      logAdminAudit('update_complaint', user.uid, 'complaints', comp.id, `অভিযোগ #${comp.id.slice(0, 6)} স্ট্যাটাস: ${status}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'অভিযোগ আপডেট ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -501,12 +548,14 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleClaimStatus = async (claim: ItemClaim, status: 'approved' | 'distributed' | 'rejected') => {
     if (!user) return;
     try {
-      await updateItemClaimStatusAdmin(claim.id, claim.itemId, status, claim.quantity);
-      await logAdminAudit('update_item_claim', user.uid, 'item_claims', claim.id, `দাবি #${claim.id.slice(0, 6)} স্ট্যাটাস: ${status}`);
+      setClaims(prev => prev.map(c => c.id === claim.id ? { ...c, status } : c));
       showMsg('success', `সামগ্রী দাবি স্ট্যাটাস আপডেট হয়েছে: ${status}`);
-      await loadAllData();
+      await updateItemClaimStatusAdmin(claim.id, claim.itemId, status, claim.quantity);
+      logAdminAudit('update_item_claim', user.uid, 'item_claims', claim.id, `দাবি #${claim.id.slice(0, 6)} স্ট্যাটাস: ${status}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'দাবি আপডেট ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -517,7 +566,7 @@ export const SuperAdminDashboard: React.FC = () => {
     if (!reliefItemType.trim() || !reliefQty) return;
 
     try {
-      await addReliefDistributionAdmin({
+      const relData = {
         campaignId: 'general',
         itemType: reliefItemType.trim(),
         quantity: Number(reliefQty) || 1,
@@ -526,17 +575,21 @@ export const SuperAdminDashboard: React.FC = () => {
         handlerName: reliefHandler.trim() || user.displayName || 'ফিল্ড সমন্বয়কারী',
         date: reliefDate || new Date().toISOString().slice(0, 10),
         notes: reliefNotes.trim() || undefined
-      });
-      await logAdminAudit('add_relief_distribution', user.uid, 'relief_distributions', 'new', `ত্রাণ বিতরণ রেকর্ড: ${reliefQty} টি ${reliefItemType} (${reliefDistrict})`);
-      showMsg('success', 'ফিল্ড ত্রাণ বিতরণের রেকর্ড সফলভাবে যুক্ত হয়েছে!');
+      };
       setShowNewReliefModal(false);
       setReliefItemType('');
       setReliefQty('');
       setReliefLocation('');
       setReliefNotes('');
-      await loadAllData();
+      showMsg('success', 'ফিল্ড ত্রাণ বিতরণের রেকর্ড সফলভাবে যুক্ত হয়েছে!');
+
+      const id = await addReliefDistributionAdmin(relData);
+      setReliefDistributions(prev => [{ id, ...relData, createdAt: new Date().toISOString() }, ...prev]);
+      logAdminAudit('add_relief_distribution', user.uid, 'relief_distributions', id, `ত্রাণ বিতরণ: ${relData.quantity} টি ${relData.itemType} (${relData.district})`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'ত্রাণ রেকর্ড যুক্ত করতে ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -544,12 +597,14 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleStoryStatus = async (story: PublishedStory, isApproved: boolean) => {
     if (!user) return;
     try {
-      await updateStoryStatusAdmin(story.id, isApproved);
-      await logAdminAudit('moderate_story', user.uid, 'published_stories', story.id, `গল্প "${story.title}" প্রকাশ স্ট্যাটাস: ${isApproved}`);
+      setStories(prev => prev.map(s => s.id === story.id ? { ...s, isApproved } : s));
       showMsg('success', isApproved ? 'গল্পটি সফলভাবে প্রকাশিত হয়েছে!' : 'গল্পটির প্রকাশনা স্থগিত করা হয়েছে।');
-      await loadAllData();
+      await updateStoryStatusAdmin(story.id, isApproved);
+      logAdminAudit('moderate_story', user.uid, 'published_stories', story.id, `গল্প "${story.title}" প্রকাশ স্ট্যাটাস: ${isApproved}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'গল্পের স্ট্যাটাস হালনাগাদে সমস্যা হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -557,12 +612,14 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleOrgStatus = async (org: PartnerOrganization, status: PartnerOrganization['status']) => {
     if (!user) return;
     try {
-      await updateOrganizationStatusAdmin(org.id, status);
-      await logAdminAudit('update_organization', user.uid, 'organizations', org.id, `অংশীদার সংস্থা "${org.name}" স্ট্যাটাস: ${status}`);
+      setOrganizations(prev => prev.map(o => o.id === org.id ? { ...o, status } : o));
       showMsg('success', `অংশীদার সংগঠনের স্ট্যাটাস আপডেট হয়েছে: ${status}`);
-      await loadAllData();
+      await updateOrganizationStatusAdmin(org.id, status);
+      logAdminAudit('update_organization', user.uid, 'organizations', org.id, `অংশীদার সংস্থা "${org.name}" স্ট্যাটাস: ${status}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'সংস্থার স্ট্যাটাস হালনাগাদ ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -580,12 +637,14 @@ export const SuperAdminDashboard: React.FC = () => {
     if (!activity) return;
 
     try {
-      await awardVolunteerPointsAdmin(vol.id, vol.userId, vol.name, activity, pts, user.uid);
-      await logAdminAudit('award_volunteer_points', user.uid, 'volunteer_applications', vol.id, `স্বেচ্ছাসেবক ${vol.name} কে ${pts} পয়েন্ট প্রদান। কার্যক্রম: ${activity}`);
+      setVolunteers(prev => prev.map(v => v.id === vol.id ? { ...v, points: (v.points || 0) + pts } : v));
       showMsg('success', `সফলভাবে ${pts} পয়েন্ট যুক্ত হয়েছে! লেজার ও নোটিফিকেশন হালনাগাদ সম্পন্ন।`);
-      await loadAllData();
+      await awardVolunteerPointsAdmin(vol.id, vol.userId, vol.name, activity, pts, user.uid);
+      logAdminAudit('award_volunteer_points', user.uid, 'volunteer_applications', vol.id, `স্বেচ্ছাসেবক ${vol.name} কে ${pts} পয়েন্ট প্রদান। কার্যক্রম: ${activity}`).catch(() => {});
+      loadAllData(true);
     } catch (err) {
       showMsg('error', 'পয়েন্ট যুক্ত করতে ব্যর্থ হয়েছে।');
+      loadAllData(true);
     }
   };
 
@@ -704,7 +763,7 @@ export const SuperAdminDashboard: React.FC = () => {
             অনুদানের CSV রিপোর্ট
           </button>
           <button
-            onClick={loadAllData}
+            onClick={() => loadAllData()}
             className="px-3.5 py-2 bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
           >
             ডাটা রিফ্রেশ

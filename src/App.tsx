@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { testFirestoreConnection } from './firebase/config';
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
@@ -29,6 +30,7 @@ import { Campaign } from './types';
 
 function MainAppContent() {
   const { user, isAdmin } = useAuth();
+  const { settings } = useSettings();
 
   // Navigation tab state
   const [currentTab, setCurrentTab] = useState<string>('home');
@@ -194,7 +196,7 @@ function MainAppContent() {
         )}
 
         {(currentTab === 'download' || currentTab === 'app') && (
-          <MobileAppDownloadView onNavigateHome={() => handleTabChange('home')} />
+          <MobileAppDownloadView settings={settings} onNavigateHome={() => handleTabChange('home')} />
         )}
 
         {(currentTab === 'privacy' || currentTab === 'terms' || currentTab === 'faq') && (
@@ -206,7 +208,7 @@ function MainAppContent() {
       </main>
 
       {/* Footer */}
-      <Footer onNavigate={handleTabChange} />
+      <Footer onNavigate={handleTabChange} settings={settings} />
 
       {/* Mobile Bottom Navigation Bar */}
       <BottomNav
@@ -249,7 +251,9 @@ function MainAppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <MainAppContent />
+      <SettingsProvider>
+        <MainAppContent />
+      </SettingsProvider>
     </AuthProvider>
   );
 }

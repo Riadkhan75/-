@@ -1356,14 +1356,29 @@ export async function getSystemSettings(): Promise<SystemSettings> {
 export async function updateSystemSettings(settings: Partial<SystemSettings>, updatedByAdmin?: string): Promise<void> {
   const docPath = 'system_settings/general';
   try {
-    const payload = {
-      ...settings,
-      updatedAt: new Date().toISOString(),
-      updatedBy: updatedByAdmin || 'admin'
-    };
-    await setDoc(doc(db, 'system_settings', 'general'), payload, { merge: true });
+    // Explicitly clean any undefined values
+    const cleanPayload: Record<string, any> = {};
+    for (const [key, val] of Object.entries(settings)) {
+      if (val !== undefined) {
+        cleanPayload[key] = val;
+      }
+    }
+
+    cleanPayload.updatedAt = new Date().toISOString();
     if (updatedByAdmin) {
-      await logAdminAudit('update_system_settings', updatedByAdmin, 'system_settings', 'general', 'সিস্টেম সাধারণ সেটিংস হালনাগাদ করা হয়েছে');
+      cleanPayload.updatedBy = updatedByAdmin;
+    }
+
+    await setDoc(doc(db, 'system_settings', 'general'), cleanPayload, { merge: true });
+
+    // Non-blocking security audit log
+    if (updatedByAdmin) {
+      logAdminAudit('update_system_settings', updatedByAdmin, 'system_settings', 'general', 'সিস্টেম সাধারণ সেটিংস হালনাগাদ করা হয়েছে').catch(() => {});
+    }
+
+    // Broadcast update event for instant cross-component synchronization
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('manobotar_settings_updated', { detail: cleanPayload }));
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);

@@ -22,6 +22,7 @@ import {
   getCampaigns, 
   getSystemSettings 
 } from '../services/firestoreService';
+import { useSettings } from '../context/SettingsContext';
 import { Campaign, PaymentMethod, SystemSettings, DEFAULT_SYSTEM_SETTINGS } from '../types';
 import { formatTaka, toBengaliNumber } from '../utils/bengaliUtils';
 
@@ -39,12 +40,19 @@ export const DonatePageView: React.FC<DonatePageViewProps> = ({
   onRequireAuth
 }) => {
   const { user, userProfile } = useAuth();
+  const { settings: contextSettings } = useSettings();
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>(
     initialCampaign ? initialCampaign.id : 'general'
   );
-  const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
+  const [settings, setSettings] = useState<SystemSettings>(contextSettings || DEFAULT_SYSTEM_SETTINGS);
+
+  useEffect(() => {
+    if (contextSettings) {
+      setSettings(contextSettings);
+    }
+  }, [contextSettings]);
 
   const [amount, setAmount] = useState<string>('1000');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bkash');
@@ -65,16 +73,12 @@ export const DonatePageView: React.FC<DonatePageViewProps> = ({
     date: string;
   } | null>(null);
 
-  // Load active campaigns and system settings
+  // Load active campaigns
   useEffect(() => {
     async function loadData() {
       try {
-        const [camps, sysSettings] = await Promise.all([
-          getCampaigns(),
-          getSystemSettings()
-        ]);
+        const camps = await getCampaigns();
         setCampaigns(camps.filter(c => c.status === 'active'));
-        setSettings(sysSettings);
       } catch (err) {
         console.warn('Error fetching donate page data:', err);
       }

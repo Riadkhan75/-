@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Megaphone, X, AlertCircle, Info, CheckCircle2 } from 'lucide-react';
 import { getActiveAnnouncements } from '../services/firestoreService';
+import { useSettings } from '../context/SettingsContext';
 import { Announcement } from '../types';
 
 export const AnnouncementBanner: React.FC = () => {
+  const { settings } = useSettings();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [closed, setClosed] = useState(false);
 
@@ -19,9 +21,14 @@ export const AnnouncementBanner: React.FC = () => {
     fetchAnnouncements();
   }, []);
 
-  if (closed || announcements.length === 0) return null;
+  if (closed) return null;
 
-  const current = announcements[0];
+  const hasEmergencyNotice = settings.emergencyNoticeActive && !!settings.emergencyNoticeText;
+  if (!hasEmergencyNotice && announcements.length === 0) return null;
+
+  const current = hasEmergencyNotice
+    ? { title: 'জরুরি বার্তা', content: settings.emergencyNoticeText, type: 'urgent' as const }
+    : announcements[0];
 
   const bgStyles = {
     urgent: 'bg-gradient-to-r from-red-600 to-rose-700 text-white',

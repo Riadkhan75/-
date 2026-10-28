@@ -20,6 +20,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface NavbarProps {
   currentTab: string;
@@ -39,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   unreadNotifsCount = 0
 }) => {
   const { user, userProfile, isAdmin, signOutUser } = useAuth();
+  const { settings } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -75,14 +77,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-lg sm:text-2xl font-bold tracking-tight text-emerald-950 font-['Hind_Siliguri',sans-serif]">
-                  মানবতার সেবা
+                  {settings.platformName || 'মানবতার সেবা'}
                 </span>
                 <span className="hidden xl:inline-block px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-800 rounded-full">
                   সার্বজনীন কল্যাণ
                 </span>
               </div>
               <p className="text-[11px] text-teal-800 font-medium hidden sm:block">
-                একসঙ্গে মানুষের পাশে
+                {settings.tagline || 'একসঙ্গে মানুষের পাশে'}
               </p>
             </div>
           </div>

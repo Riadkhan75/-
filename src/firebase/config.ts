@@ -13,7 +13,8 @@ const dbId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatab
 let firestoreInstance: Firestore;
 try {
   firestoreInstance = initializeFirestore(app, {
-    experimentalForceLongPolling: true
+    ignoreUndefinedProperties: true,
+    experimentalAutoDetectLongPolling: true
   }, dbId);
 } catch (e) {
   firestoreInstance = dbId ? getFirestore(app, dbId) : getFirestore(app);
